@@ -9,8 +9,7 @@ app.use(cors());
 
 const {
   CLIENT_ID,
-  CLIENT_SECRET,
-  REDIRECT_URI
+  CLIENT_SECRET
 } = process.env;
 
 const SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize';
@@ -22,7 +21,7 @@ app.get('/', (req, res) => {
   const queryParams = querystring.stringify({
     client_id: CLIENT_ID,
     response_type: 'code',
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: 'http://localhost:3000/callback',
     scope,
   });
 
@@ -37,7 +36,7 @@ app.get('/callback', async (req, res) => {
         SPOTIFY_TOKEN_URL,
         querystring.stringify({
           code,
-          redirect_uri: REDIRECT_URI,
+          redirect_uri: 'http://localhost:3000/callback',
           grant_type: 'authorization_code',
         }),
       {

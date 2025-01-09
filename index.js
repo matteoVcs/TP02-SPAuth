@@ -67,7 +67,48 @@ function formatSpotifyJsonToHtml(data) {
   `;
 }
 
+// Root Endpoint with Buttons
 app.get('/', (req, res) => {
+  const authCodeUrl = `/auth/authorization-code`;
+  const implicitGrantUrl = `/auth/implicit-grant`;
+
+  res.send(`
+    <html>
+      <head>
+        <title>Spotify Authentication</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background-color: #f4f4f4;
+          }
+          button {
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 16px;
+            color: white;
+            background-color: #1DB954;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+          }
+          button:hover {
+            background-color: #14833b;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Welcome to Spotify Authentication</h1>
+        <p>Choose an authentication method:</p>
+        <button onclick="window.location.href='${authCodeUrl}'">Authorization Code Flow</button>
+        <button onclick="window.location.href='${implicitGrantUrl}'">Implicit Grant Flow</button>
+      </body>
+    </html>
+  `);
+});
+
+app.get('/auth/authorization-code', (req, res) => {
   const scope = 'user-read-recently-played';
   const queryParams = querystring.stringify({
     client_id: CLIENT_ID,
@@ -79,39 +120,101 @@ app.get('/', (req, res) => {
   res.redirect(`${SPOTIFY_AUTH_URL}?${queryParams}`);
 });
 
+app.get('/auth/implicit-grant', (req, res) => {
+  const scope = 'user-read-recently-played';
+  const queryParams = querystring.stringify({
+    client_id: CLIENT_ID,
+    response_type: 'token',
+    redirect_uri: REDIRECT_URI,
+    scope,
+  });
+
+  const implicitGrantUrl = `${SPOTIFY_AUTH_URL}?${queryParams}`;
+  res.send(`
+    <html>
+      <head>
+        <title>Implicit Grant Flow</title>
+      </head>
+      <body>
+        <p>Click the link below to authenticate using the Implicit Grant Flow:</p>
+        <a href="${implicitGrantUrl}" target="_blank">${implicitGrantUrl}</a>
+      </body>
+    </html>
+  `);
+});
+
 app.get('/callback', async (req, res) => {
   const code = req.query.code;
 
-  if (!code) {
-    return res.status(400).send("<p>Authorization code is missing.</p>");
-  }
+  if (code) {
+    // Authorization Code Flow
+    try {
+      const response = await axios.post(
+          SPOTIFY_TOKEN_URL,
+          querystring.stringify({
+            code,
+            redirect_uri: REDIRECT_URI,
+            grant_type: 'authorization_code',
+          }),
+          {
+            headers: {
+              Authorization: `Basic ${Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+          }
+      );
 
-  try {
-    const response = await axios.post(
-        SPOTIFY_TOKEN_URL,
-        querystring.stringify({
-          code,
-          redirect_uri: REDIRECT_URI,
-          grant_type: 'authorization_code',
-        }),
-        {
-          headers: {
-            Authorization: `Basic ${Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        }
-    );
+      const { access_token } = response.data;
 
-    const { access_token } = response.data;
+      if (!access_token) {
+        throw new Error('Access token is missing in response.');
+      }
 
-    if (!access_token) {
-      throw new Error('Access token is missing in response.');
+      // Redirect to songs with access token
+      return res.redirect(`/songs?token=${access_token}`);
+    } catch (error) {
+      console.error('Error during token exchange:', error.message);
+      return res.status(500).send("<p>Failed to fetch token from Spotify using Authorization Code Flow.</p>");
     }
+  } else {
+    // Implicit Grant Flow fallback
+    const scope = 'user-read-recently-played';
+    const queryParams = querystring.stringify({
+      client_id: CLIENT_ID,
+      response_type: 'token',
+      redirect_uri: REDIRECT_URI,
+      scope,
+    });
 
-    res.redirect(`/songs?token=${access_token}`);
-  } catch (error) {
-    console.error('Error during token exchange:', error.message);
-    res.status(500).send("<p>Failed to fetch token from Spotify.</p>");
+    const implicitGrantUrl = `${SPOTIFY_AUTH_URL}?${queryParams}`;
+
+    res.send(`
+      <html>
+        <head>
+          <title>Implicit Grant Flow</title>
+          <script>
+            // Extract access_token from URL fragment
+            function handleRedirect() {
+              const hash = window.location.hash;
+              const params = new URLSearchParams(hash.substring(1)); // Remove #
+              const token = params.get('access_token');
+              
+              if (token) {
+                // Redirect to /songs with token as query param
+                window.location.href = '/songs?token=' + token;
+              } else {
+                document.getElementById('error').innerText = 'Access token is missing. Please try again.';
+              }
+            }
+            window.onload = handleRedirect;
+          </script>
+        </head>
+        <body>
+          <p id="error">Redirecting...</p>
+          <p>If the redirection does not work, <a href="${implicitGrantUrl}" target="_blank">click here</a>.</p>
+        </body>
+      </html>
+    `);
   }
 });
 

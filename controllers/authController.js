@@ -1,6 +1,9 @@
 const querystring = require('querystring');
 const axios = require('axios');
-const { CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, SPOTIFY_AUTH_URL, SPOTIFY_TOKEN_URL } = process.env;
+const { CLIENT_ID, CLIENT_SECRET } = process.env;
+const REDIRECT_URI="http://localhost:3000/callback";
+const SPOTIFY_AUTH_URL="https://accounts.spotify.com/authorize";
+const SPOTIFY_TOKEN_URL="https://accounts.spotify.com/api/token";
 
 exports.authorizationCodeFlow = (req, res) => {
     const scope = 'user-read-recently-played';

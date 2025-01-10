@@ -42,6 +42,7 @@ exports.implicitGrantFlow = (req, res) => {
 
 exports.callback = async (req, res) => {
     const code = req.query.code;
+    console.log('Code reçu:', code);
 
     if (code) {
         try {
@@ -61,6 +62,7 @@ exports.callback = async (req, res) => {
             );
 
             const { access_token } = response.data;
+            console.log('Access Token:', access_token);
 
             if (!access_token) {
                 throw new Error('Access token is missing in response.');
@@ -71,5 +73,27 @@ exports.callback = async (req, res) => {
             console.error('Error during token exchange:', error.message);
             return res.status(500).send("<p>Failed to fetch token from Spotify using Authorization Code Flow.</p>");
         }
+    } else {
+        res.send(`
+        <html>
+          <head>
+            <title>Implicit Grant Flow</title>
+          </head>
+          <body>
+            <h1>Authentification réussie !</h1>
+            <p>Vous êtes maintenant authentifié. Redirection vers vos chansons...</p>
+            <script>
+              const urlParams = new URLSearchParams(window.location.hash.substring(1));
+              const accessToken = urlParams.get('access_token');
+
+              if (accessToken) {
+                window.location.href = '/songs?token=' + accessToken;
+              } else {
+                alert('Access token is missing.');
+              }
+            </script>
+          </body>
+        </html>
+        `);
     }
 };

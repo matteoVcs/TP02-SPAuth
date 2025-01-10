@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { SPOTIFY_SONG_URL } = process.env;
+const SPOTIFY_SONG_URL = 'https://api.spotify.com/v1/me/player/recently-played';
 const { formatSpotifyJsonToHtml } = require('../utils/spotifyUtils');
 
 exports.getRecentlyPlayed = async (req, res) => {

@@ -1,14 +1,18 @@
 const express = require('express');
+const helmet = require('helmet');
 const cors = require('cors');
 require('dotenv').config();
 
 const authRoutes = require('./routes/authRoutes');
 const songRoutes = require('./routes/songRoutes');
+const authController = require('./controllers/authController');
 
 const app = express();
+
 app.use(cors());
 
 app.use('/auth', authRoutes);
+app.get('/callback', authController.callback);
 app.use('/songs', songRoutes);
 
 app.get('/', (req, res) => {
